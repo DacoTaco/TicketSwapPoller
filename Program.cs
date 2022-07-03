@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using TicketSwapPoller;
 
+var workerId = 0;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration( (context, builder) =>
     {
@@ -20,12 +21,21 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices((context, services) =>
     {
-        var eventIdConfig = context.Configuration.GetSection("EventId").Value;
-        var eventId = int.Parse(eventIdConfig);
-        services.AddTransient<Worker>((provider) => new Worker(provider.GetRequiredService<ILogger<Worker>>(), eventId));
+        var eventId = context.Configuration.GetValue<int>("EventId");
+        var accessCodes = context.Configuration.GetValue<IEnumerable<string>>("AccessCodes");
+        services.AddTransient<Worker>((provider) =>
+        {
+            var accessCode = (accessCodes ?? Enumerable.Empty<string>()).Any()
+                ? accessCodes?.ElementAtOrDefault(workerId)
+                : "";
+                
+            return new Worker(provider.GetRequiredService<ILogger<Worker>>(), workerId++, eventId, accessCode);
+        });
     })
     .UseSerilog()
     .Build();
 
-var my = host.Services.GetRequiredService<Worker>();
-await my.StartAsync();
+await Task.WhenAll(
+    host.Services.GetRequiredService<Worker>().StartAsync()
+    //host.Services.GetRequiredService<Worker>().StartAsync()
+);

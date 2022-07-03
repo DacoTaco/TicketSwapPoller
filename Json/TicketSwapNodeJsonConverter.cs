@@ -7,6 +7,7 @@ namespace TicketSwapPoller.Json
 {
     public class TicketSwapNodeJsonConverter : JsonConverter<TicketSwapNode>
     {
+        private readonly object _nodeTypesLock = new ();
         private readonly Dictionary<string, Type> _nodeTypes = new();
         public override bool CanConvert(Type typeToConvert) => typeof(TicketSwapNode).IsAssignableFrom(typeToConvert);
 
@@ -125,18 +126,24 @@ namespace TicketSwapPoller.Json
             if (_nodeTypes.Any())
                 return;
 
-            var types = Assembly.GetExecutingAssembly().GetTypes().Where(type => CanConvert(type));
-
-            foreach(var type in types)
+            lock(_nodeTypesLock)
             {
-                if (type.IsAbstract)
-                    continue;
+                if (_nodeTypes.Any())
+                    return;
 
-                var model = (TicketSwapNode?)Activator.CreateInstance(type);
-                if (model == null)
-                    continue;
+                var types = Assembly.GetExecutingAssembly().GetTypes().Where(type => CanConvert(type));
 
-                _nodeTypes.Add(model.TypeName, type);
+                foreach (var type in types)
+                {
+                    if (type.IsAbstract)
+                        continue;
+
+                    var model = (TicketSwapNode?)Activator.CreateInstance(type);
+                    if (model == null)
+                        continue;
+
+                    _nodeTypes.Add(model.TypeName, type);
+                }
             }
         }
     }
