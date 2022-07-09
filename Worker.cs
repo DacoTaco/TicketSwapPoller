@@ -70,7 +70,149 @@ public class Worker
                         First = 10
                     },
                     //originally the query had 'filter: {listingStatus: RESERVED}', changed to 'filter: {listingStatus: AVAILABLE}'
-                    Query = "query getReservedListings($id: ID!, $first: Int, $after: String) {\n  node(id: $id) {\n    ... on EventType {\n      id\n      slug\n      title\n      reservedListings: listings(\n        first: $first\n        filter: {listingStatus: RESERVED}\n        after: $after\n      ) {\n        ...listings\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment listings on ListingConnection {\n  edges {\n    node {\n      ...listingList\n      __typename\n    }\n    __typename\n  }\n  pageInfo {\n    endCursor\n    hasNextPage\n    __typename\n  }\n  __typename\n}\n\nfragment listingList on PublicListing {\n  id\n  hash\n  description\n  isPublic\n  status\n  dateRange {\n    startDate\n    endDate\n    __typename\n  }\n  uri {\n    path\n    __typename\n  }\n  event {\n    id\n    name\n    startDate\n    endDate\n    slug\n    status\n    location {\n      id\n      name\n      city {\n        id\n        name\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  eventType {\n    id\n    title\n    startDate\n    endDate\n    __typename\n  }\n  seller {\n    id\n    firstname\n    avatar\n    __typename\n  }\n  tickets(first: 99) {\n    edges {\n      node {\n        id\n        status\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n  numberOfTicketsInListing\n  numberOfTicketsStillForSale\n  price {\n    originalPrice {\n      ...money\n      __typename\n    }\n    totalPriceWithTransactionFee {\n      ...money\n      __typename\n    }\n    sellerPrice {\n      ...money\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment money on Money {\n  amount\n  currency\n  __typename\n}\n",
+                    Query = @"query getReservedListings($id: ID!, $first: Int, $after: String) 
+							{
+								node(id: $id) 
+								{
+									... on EventType 
+									{
+										id
+										slug
+										title
+										reservedListings: listings
+										(
+											first: $first
+											filter: {listingStatus: RESERVED}
+											after: $after
+										) {
+											...listings
+											__typename
+										}
+										__typename
+									}
+								__typename
+								}
+							}
+
+							fragment listings on ListingConnection 
+							{
+								edges 
+								{
+									node 
+									{
+										...listingList
+										__typename
+									}
+									__typename
+								}
+								pageInfo 
+								{
+									endCursor
+									hasNextPage
+									__typename
+								}
+								__typename
+							}
+
+							fragment listingList on PublicListing 
+							{
+								id
+								hash
+								description
+								isPublic
+								status
+								dateRange 
+								{
+									startDate
+									endDate
+									__typename
+								}
+								uri 
+								{
+									path
+									__typename
+								}
+								event 
+								{
+									id
+									name
+									startDate
+									endDate
+									slug
+									status
+									location 
+									{
+										id
+										name
+										city 
+										{
+											id
+											name
+											__typename
+										}
+										__typename
+									}
+									__typename
+								}
+								eventType 
+								{
+									id
+									title
+									startDate
+									endDate
+									__typename
+								}
+								seller 
+								{
+									id
+									firstname
+									avatar
+									__typename
+								}
+								tickets(first: 99) 
+								{
+									edges 
+									{
+										node 
+										{
+											id
+											status
+											__typename
+										}
+										__typename
+									}
+									__typename
+								}
+								numberOfTicketsInListing
+								numberOfTicketsStillForSale
+								price 
+								{
+									originalPrice 
+									{
+										...money
+										__typename
+									}
+									totalPriceWithTransactionFee 
+									{
+										...money
+										__typename
+									}
+									sellerPrice 
+									{
+										...money
+										__typename
+									}
+									__typename
+								}
+								__typename
+							}
+
+							fragment money on Money 
+							{
+								amount
+								currency
+								__typename
+							}",
                 };
 
                 GraphQLResponse<AvailableTicketsResponse> responseql;
@@ -120,14 +262,14 @@ public class Worker
             }
 
             var waitTime = new TimeSpan(0, 0, 1);
-            if (totalWaitTime.Minutes == 4 && totalWaitTime.Seconds > 30)
+            if (totalWaitTime.Minutes >= 4 && totalWaitTime.Seconds > 30)
             {
                 totalWaitTime = new TimeSpan(0);
                 waitTime = new TimeSpan(0, 0, random.Next(30, 41));
             }
             else
             {
-                waitTime = new TimeSpan(0, 0, 0, 0, random.Next(100, 200));
+                waitTime = new TimeSpan(0, 0, 0, 0, random.Next(150, 200));
                 totalWaitTime += waitTime;
             }
 
