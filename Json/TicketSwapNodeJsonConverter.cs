@@ -18,11 +18,11 @@ namespace TicketSwapPoller.Json
 
             LoadNodeTypes();
             var oldReader = reader;
-            string? nodeType;
+            string? nodeType = null;
             while (true)
             {
-                if(!reader.Read())
-                    throw new JsonException();
+                if (!reader.Read())
+                    break;
 
                 if(reader.TokenType != JsonTokenType.PropertyName)
                 {

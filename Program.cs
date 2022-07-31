@@ -22,7 +22,7 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
         var eventId = context.Configuration.GetValue<int>("EventId");
-        var accessCodes = context.Configuration.GetValue<IEnumerable<string>>("AccessCodes");
+        var accessCodes = context.Configuration.GetSection("AccessCodes").Get<IEnumerable<string>>();
         services.AddTransient<Worker>((provider) =>
         {
             var accessCode = (accessCodes ?? Enumerable.Empty<string>()).Any()

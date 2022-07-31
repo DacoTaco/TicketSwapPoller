@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using TicketSwapPoller.Models;
+using TicketSwapPoller.Models.Nodes;
+using TicketSwapPoller.Models.Queries;
 
 namespace TicketSwapPoller;
 public class Worker
@@ -58,201 +60,73 @@ public class Worker
         LogInformation("Running worker...");
         while (true)
         {
-            try
-            {
+			try
+			{
                 var eventId = Convert.ToBase64String(Encoding.UTF8.GetBytes($"EventType:{_eventId}"));
-                var ticketsRequest = new GraphQLRequest()
-                {
-                    OperationName = "getReservedListings",
-                    Variables = new
-                    {
-                        Id = eventId,
-                        First = 10
-                    },
-                    //originally the query had 'filter: {listingStatus: RESERVED}', changed to 'filter: {listingStatus: AVAILABLE}'
-                    Query = @"query getReservedListings($id: ID!, $first: Int, $after: String) 
-							{
-								node(id: $id) 
-								{
-									... on EventType 
-									{
-										id
-										slug
-										title
-										reservedListings: listings
-										(
-											first: $first
-											filter: {listingStatus: RESERVED}
-											after: $after
-										) {
-											...listings
-											__typename
-										}
-										__typename
-									}
-								__typename
-								}
-							}
-
-							fragment listings on ListingConnection 
-							{
-								edges 
-								{
-									node 
-									{
-										...listingList
-										__typename
-									}
-									__typename
-								}
-								pageInfo 
-								{
-									endCursor
-									hasNextPage
-									__typename
-								}
-								__typename
-							}
-
-							fragment listingList on PublicListing 
-							{
-								id
-								hash
-								description
-								isPublic
-								status
-								dateRange 
-								{
-									startDate
-									endDate
-									__typename
-								}
-								uri 
-								{
-									path
-									__typename
-								}
-								event 
-								{
-									id
-									name
-									startDate
-									endDate
-									slug
-									status
-									location 
-									{
-										id
-										name
-										city 
-										{
-											id
-											name
-											__typename
-										}
-										__typename
-									}
-									__typename
-								}
-								eventType 
-								{
-									id
-									title
-									startDate
-									endDate
-									__typename
-								}
-								seller 
-								{
-									id
-									firstname
-									avatar
-									__typename
-								}
-								tickets(first: 99) 
-								{
-									edges 
-									{
-										node 
-										{
-											id
-											status
-											__typename
-										}
-										__typename
-									}
-									__typename
-								}
-								numberOfTicketsInListing
-								numberOfTicketsStillForSale
-								price 
-								{
-									originalPrice 
-									{
-										...money
-										__typename
-									}
-									totalPriceWithTransactionFee 
-									{
-										...money
-										__typename
-									}
-									sellerPrice 
-									{
-										...money
-										__typename
-									}
-									__typename
-								}
-								__typename
-							}
-
-							fragment money on Money 
-							{
-								amount
-								currency
-								__typename
-							}",
-                };
-
-                GraphQLResponse<AvailableTicketsResponse> responseql;
+				var getAvailableListings = new TicketsByTypeQuery(eventId, ListingStatus.Available);
+                var getReservedListings = new TicketsByTypeQuery(eventId, ListingStatus.Reserved);
+                var responses = new List<EventTypeNode>();
                 try
                 {
                     await _semaphore.WaitAsync(cancellationToken);
 
-                    _graphQlClient.HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessCode);
+                    _graphQlClient.HttpClient.DefaultRequestHeaders.Authorization = null;
                     _graphQlClient.HttpClient.DefaultRequestHeaders.UserAgent.Clear();
                     _graphQlClient.HttpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(faker.Lorem.Word(), faker.Random.Number(0, 255).ToString()));
 
-                    responseql = await _graphQlClient.SendQueryAsync<AvailableTicketsResponse>(ticketsRequest, cancellationToken);
+                    var response = await _graphQlClient.SendQueryAsync<TicketsByTypeQuery>(getAvailableListings.ToGraphQuery(), cancellationToken);
+                    if ((response.Errors == null || !response.Errors.Any()) && response?.Data?.Node != null)
+                        responses.Add(response.Data.Node);
+
+                    response = await _graphQlClient.SendQueryAsync<TicketsByTypeQuery>(getReservedListings.ToGraphQuery(), cancellationToken);
+                    if ((response.Errors == null || !response.Errors.Any()) && response?.Data?.Node != null)
+                        responses.Add(response.Data.Node);
                 }
                 finally
                 {
                     _semaphore.Release();
                 }
 
-                if (responseql.Errors != null && responseql.Errors.Any())
-                    continue;
-
-                var listings = responseql.Data?.Node?.ReservedListings?.Edges?.Select(edge => edge.Node) ?? Enumerable.Empty<PublicListingNode>();
-                foreach (var listing in listings.Where(listing => listing != null))
+                foreach (var listing in responses.Where(listing => listing != null).SelectMany(response => response.ReservedListings.Edges.Select(edge => edge.Node)))
                 {
-                    if (listing?.Status != "RESERVED")
-                    {
-                        LogInformation("TICKET FOUND!!!!!!!!!!!!!!!!!!!!! -> '{ticketPath}'", listing?.Uri?.Path);
-                        if (!string.IsNullOrWhiteSpace(listing?.Uri?.Path) && !openedLinks.ContainsKey(listing.Uri.Path))
-                        {
-                            openedLinks.Add(listing.Uri.Path, DateTimeOffset.Now);
-                            Process.Start(new ProcessStartInfo($"https://www.ticketswap.be{listing.Uri.Path}") { UseShellExecute = true });
-                        }
-                        else
-                        {
-                            LogInformation("empty url or already opened recently.");
-                        }
-                    }
-                    else
+                    if (listing?.Status == "RESERVED")
                     {
                         LogInformation("found {NumberOfTicketsInListing} Reserved Ticket(s)", listing.NumberOfTicketsInListing);
+                        continue;
+                    }
+
+                    LogInformation("TICKET FOUND!!!!!!!!!!!!!!!!!!!!! -> '{ticketPath}'", listing?.Uri?.Path);
+                    if (string.IsNullOrWhiteSpace(listing?.Id) || string.IsNullOrWhiteSpace(listing.Hash) || openedLinks.ContainsKey(listing.Id))
+                    {
+                        LogInformation("empty id or already opened recently.");
+                        continue;
+                    }
+
+                    await _semaphore.WaitAsync(cancellationToken);
+
+                    try
+                    {
+                        if (string.IsNullOrWhiteSpace(_accessCode))
+                            continue;
+
+                        _graphQlClient.HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessCode);
+                        _graphQlClient.HttpClient.DefaultRequestHeaders.UserAgent.Clear();
+                        _graphQlClient.HttpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(faker.Lorem.Word(), faker.Random.Number(0, 255).ToString()));
+
+                        var response = await _graphQlClient.SendQueryAsync<AddTicketToCartMutation>(new AddTicketToCartMutation(listing.Id, listing.Hash).ToGraphQuery(), cancellationToken);
+                        if (response.Errors != null && response.Errors.Any())
+                            throw new Exception("Error adding ticket to cart");
+
+                        openedLinks.Add(listing.Id, DateTimeOffset.Now);
+                        //open ticketswap cart
+                        Process.Start(new ProcessStartInfo($"https://www.ticketswap.be/cart") { UseShellExecute = true });
+                    }
+                    finally
+                    {
+                        if (!string.IsNullOrWhiteSpace(listing?.Uri?.Path))
+                            Process.Start(new ProcessStartInfo($"https://www.ticketswap.be{listing.Uri.Path}") { UseShellExecute = true });
+
+                        _semaphore.Release();
                     }
                 }
             }
@@ -275,7 +149,7 @@ public class Worker
 
             foreach(var link in openedLinks)
             {
-                if (link.Value.AddSeconds(3) < DateTimeOffset.Now)
+                if (link.Value.AddMinutes(30) < DateTimeOffset.Now)
                     openedLinks.Remove(link.Key);
             }
 
