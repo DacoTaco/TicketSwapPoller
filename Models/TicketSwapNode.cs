@@ -8,5 +8,7 @@ namespace TicketSwapPoller.Models
         public string TypeName => GetTypeName();
 
         protected abstract string GetTypeName();
+
+        public virtual string ToQueryFragment() => "";
     }
 }

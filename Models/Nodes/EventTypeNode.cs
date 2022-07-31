@@ -1,4 +1,4 @@
-﻿namespace TicketSwapPoller.Models
+﻿namespace TicketSwapPoller.Models.Nodes
 {
     public class EventTypeNode : TicketSwapNode
     {
