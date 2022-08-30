@@ -1,25 +1,22 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketSwapPoller", "TicketSwapPoller.csproj", "{B6B5962C-EA51-45F4-9654-5E1866A9A0E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketSwapPoller", "TicketSwapPoller\TicketSwapPoller.csproj", "{5CE202A8-64B8-43DF-80D5-508A75E72434}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B6B5962C-EA51-45F4-9654-5E1866A9A0E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B6B5962C-EA51-45F4-9654-5E1866A9A0E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B6B5962C-EA51-45F4-9654-5E1866A9A0E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B6B5962C-EA51-45F4-9654-5E1866A9A0E8}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {3C17F936-95F0-41CC-A2D3-A4955C53D830}
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5CE202A8-64B8-43DF-80D5-508A75E72434}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CE202A8-64B8-43DF-80D5-508A75E72434}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CE202A8-64B8-43DF-80D5-508A75E72434}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CE202A8-64B8-43DF-80D5-508A75E72434}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

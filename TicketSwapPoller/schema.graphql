@@ -1,0 +1,274 @@
+schema 
+{
+	query: Query
+	mutation: Mutation
+}
+
+type Query 
+{
+	node(id: ID): EventType
+}
+
+type Mutation
+{
+	addTicketsToCart(input: AddTicketsToCartInput!): AddTicketsToCartResponse
+}
+
+#----------------------
+#     Interfaces
+#----------------------
+interface Entity
+{
+	id: String
+}
+
+#----------------------
+#        Enums
+#----------------------
+enum ListingStatus
+{
+	AVAILABLE,
+	RESERVED,
+	SOLD
+}
+
+#----------------------
+#        Inputs
+#----------------------
+input ListingConnectionFilter
+{
+	listingStatus: ListingStatus
+}
+
+input AddTicketsToCartInput
+{
+	listingId: String!
+	listingHash: String!
+	amountOfTickets: Int!
+}
+
+#----------------------
+#    Generic Types
+#----------------------
+type Error
+{
+	code: Int
+	message: String
+}
+
+type Warning
+{
+	message: String
+}
+
+type Money
+{
+	amount: Int 
+	currency: String
+}
+
+type PageInfo 
+{ 
+	endCursor: String
+	hasNextPage: Boolean 
+}
+
+type PrivateUser implements Entity
+{
+	id: String
+	cart: Cart
+	checkout: Checkout
+}
+
+type PublicUser implements Entity
+{ 
+	id: String
+	firstname: String
+	avatar: String
+}
+
+type DateRange
+{
+	startDate: String
+	endDate: String
+}
+
+type SeatingOptions implements Entity
+{
+	id: String 
+	entrance: Boolean
+	section: Boolean
+	row: Boolean
+	seat: Boolean
+}
+
+type City implements Entity
+{ 
+	id: String 
+	name: String  
+}
+
+type Location implements Entity
+{ 
+	id: String
+	name: String
+	city: City 
+}
+
+#Uri is causing issues in code generation : https://github.com/ChilliCream/hotchocolate/issues/5361
+#type Uri
+#{ 
+#	path: String 
+#}
+
+#----------------------
+#       Events
+#----------------------
+type ClosedLoopEventInformation
+{
+	ticketProviderName: String
+	findYourTicketsUrl: String
+}
+
+type ActiveEvent implements Entity
+{
+	id: String
+	name: String
+	startDate: String
+	endDate: String
+	slug: String
+	status: String
+	timeZone: String
+	closedLoopInformation: ClosedLoopEventInformation
+	location: Location
+	types(first: Int): [EventTypeConnection]
+}
+
+type EventTypeConnection
+{
+	edges: [EventTypeEdge]
+}
+
+type EventTypeEdge
+{
+	node: EventType
+}
+
+type EventType implements Entity
+{ 
+	id: String
+	startDate: String
+	endDate: String
+	slug: String
+	ticketCategory: String
+	title: String
+	isOngoing: Boolean
+	seatingOptions: SeatingOptions
+	buyerWarning: Warning
+	event: ActiveEvent
+	listings
+	(
+		first: Int, 
+		filter: ListingConnectionFilter, 
+		after: String
+	): ListingConnection
+}
+
+#----------------------
+#       Tickets
+#----------------------
+type ListingConnection
+{ 
+	pageInfo: PageInfo
+	edges: [ListingEdge]
+}
+
+type ListingEdge
+{
+	node: PublicListing
+}
+
+type PublicListing implements Entity
+{
+	id: String
+	hash: String
+	description: String
+	isPublic: Boolean
+	status: ListingStatus
+	dateRange: DateRange
+	uri: Uri 
+	numberOfTicketsInListing: Int
+	numberOfTicketsStillForSale: Int
+	price: ListingPrice
+	seller: PublicUser
+	eventType: EventType
+	event: ActiveEvent
+	tickets(first: Int): TicketConnection
+}
+
+type ListingPrice 
+{ 
+	sellerPrice: Money
+	totalPriceWithTransactionFee: Money
+	originalPrice: Money 
+}
+
+type TicketConnection 
+{ 
+	edges: [TicketEdge]
+}
+
+type TicketEdge
+{
+	node: Ticket
+}
+
+type Ticket implements Entity
+{
+	id: String
+	hasAttachment: Boolean
+	status: ListingStatus
+	seating: SeatingOptions
+}
+
+#----------------------
+#        Cart
+#----------------------
+type Cart implements Entity
+{
+	id: String
+	isExpired: Boolean
+	currency: String
+}
+
+type Checkout
+{
+	rows: [CheckoutTicketRow]
+}
+
+type CheckoutTicketRow implements Entity
+{
+	id: String
+	title: String
+	totalPrice: Money
+	quantity: Int
+	isMandatory: Boolean
+	isSecureSwap: Boolean
+	eventType: EventType
+	ticketGroups: [CheckoutTicketGroup]
+}
+
+type CheckoutTicketGroup
+{
+	quantity: Int
+	listing: [PublicListing]
+	price: Money
+	totalPrice: Money
+	tickets: [Ticket]
+}
+
+type AddTicketsToCartResponse
+{
+	user: PrivateUser
+	errors: [Error]
+}

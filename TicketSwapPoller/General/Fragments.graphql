@@ -1,0 +1,6 @@
+fragment money on Money 
+{
+  amount
+  currency
+  __typename
+}

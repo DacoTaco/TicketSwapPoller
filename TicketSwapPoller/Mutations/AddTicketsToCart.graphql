@@ -1,0 +1,221 @@
+#mutation to add a ticket to our cart.
+#the only change we did here that is different from the website is disable the checkoutticketrow thing, which im missing something for
+mutation addTicketsToCart($input: AddTicketsToCartInput!) 
+{
+    addTicketsToCart(input: $input) 
+    {
+        user 
+        {
+            id
+            cart 
+            {
+                ...cart
+                __typename
+            }
+            checkout 
+            {
+                rows 
+                {
+                    id
+                    title
+                    totalPrice 
+                    {
+                        ...money
+                        __typename
+                    }
+                    quantity
+                    isMandatory
+                    #this seems to be broken. no idea how to deal with this?
+                    #... on CheckoutTicketRow 
+                    #{
+                    #    id
+                    #    quantity
+                    #    isSecureSwap
+                    #    totalPrice 
+                    #    {
+                    #        ...money
+                    #        __typename
+                    #    }
+                    #    eventType 
+                    #    {
+                    #        ...eventTypeCheckout
+                    #        __typename
+                    #    }
+                    #    ticketGroups 
+                    #    {
+                    #        ...ticketGroups
+                    #        __typename
+                    #    }
+                    #    __typename
+                    #}
+                    __typename
+                }
+                __typename
+            }
+            __typename
+        }
+        errors {
+            ...cartError
+            __typename
+        }
+        __typename
+    }
+}
+
+fragment cartError on Error 
+{
+    code
+    message
+    __typename
+}
+
+fragment cart on Cart 
+{
+    id
+    isExpired
+    currency
+    __typename
+}
+
+#fragment ticketGroups on CheckoutTicketGroup 
+#{
+#    quantity
+#    listing 
+#    {
+#        id
+#        dateRange 
+#        {
+#            startDate
+#            endDate
+#            __typename
+#        }
+#        description
+#        seller 
+#        {
+#            id
+#            avatar
+#            firstname
+#            __typename
+#        }
+#        __typename
+#    }
+#    price 
+#    {
+#        ...money
+#        __typename
+#    }
+#    totalPrice 
+#    {
+#        ...money
+#        __typename
+#    }
+#    tickets 
+#    {
+#        id
+#        hasAttachment
+#        seating 
+#        {
+#            id
+#            entrance
+#            section
+#            row
+#            seat
+#            __typename
+#        }
+#        __typename
+#    }
+#    __typename
+#}
+
+#fragment eventTypeCheckout on EventType 
+#{
+#    id
+#    slug
+#    title
+#    startDate
+#    endDate
+#    isOngoing
+#    seatingOptions 
+#    {
+#        entrance
+#        section
+#        row
+#        seat
+#        __typename
+#    }
+#    buyerWarning 
+#    {
+#        message
+#        __typename
+#    }
+#    event 
+#    {
+#        id
+#        name
+#        startDate
+#        endDate
+#        timeZone
+#        location 
+#        {
+#            id
+#            name
+#            __typename
+#        }
+#        closedLoopInformation 
+#        {
+#            ...closedLoopInformation
+#            __typename
+#        }
+#        types(first: 99) 
+#        {
+#            edges 
+#            {
+#                node 
+#                {
+#                    id
+#                    slug
+#                    ticketCategory
+#                    availableListings: listings(
+#                        first: 1
+#                        filter: { listingStatus: AVAILABLE }
+#                    ) 
+#                    {
+#                        edges 
+#                        {
+#                            node 
+#                            {
+#                                id
+#                                hash
+#                                price 
+#                                {
+#                                    totalPriceWithTransactionFee 
+#                                    {
+#                                        ...money
+#                                        __typename
+#                                    }
+#                                    __typename
+#                                }
+#                                numberOfTicketsStillForSale
+#                                __typename
+#                            }
+#                            __typename
+#                        }
+#                        __typename
+#                    }
+#                    __typename
+#                }
+#                __typename
+#            }
+#            __typename
+#        }
+#        __typename
+#    }
+#    __typename
+#}
+
+#fragment closedLoopInformation on ClosedLoopEventInformation 
+#{
+#    ticketProviderName
+#    findYourTicketsUrl
+#    __typename
+#}

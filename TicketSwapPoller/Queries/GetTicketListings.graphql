@@ -1,0 +1,123 @@
+#this is an altered version of what the website uses to retrieve the reserved tickets
+#what has been altered is : 
+# - name changed from getReservedListings to getTicketListings
+# - in EventType ReservedListings is renamed to Listings
+# - Url is removed due to some straberry shake issues and URL being defined multiple times?
+# - the listingStatus filter has been altered from RESERVED to a query parameter
+
+query getTicketListings($id: ID!, $listingStatus: ListingStatus!, $first: Int, $after: String) {
+  node(id: $id) {
+    ... on EventType {
+      id
+      slug
+      title
+      listings: listings(
+        first: $first
+        filter: {listingStatus: $listingStatus}
+        after: $after
+      ) {
+        ...listings
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+fragment listings on ListingConnection {
+  edges {
+    node {
+      ...listingList
+      __typename
+    }
+    __typename
+  }
+  pageInfo {
+    endCursor
+    hasNextPage
+    __typename
+  }
+  __typename
+}
+
+fragment listingList on PublicListing {
+  id
+  hash
+  description
+  isPublic
+  status
+  dateRange 
+  {
+    startDate
+    endDate
+    __typename
+  }
+# disabled as its broken in strawberry shake
+#  uri 
+#  {
+#    path
+#    __typename
+#  }
+  event {
+    id
+    name
+    startDate
+    endDate
+    slug
+    status
+    location {
+      id
+      name
+      city {
+        id
+        name
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+  eventType {
+    id
+    title
+    startDate
+    endDate
+    __typename
+  }
+  seller {
+    id
+    firstname
+    avatar
+    __typename
+  }
+  tickets(first: 99) {
+    edges {
+      node {
+        id
+        status
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+  numberOfTicketsInListing
+  numberOfTicketsStillForSale
+  price {
+    originalPrice {
+      ...money
+      __typename
+    }
+    totalPriceWithTransactionFee {
+      ...money
+      __typename
+    }
+    sellerPrice {
+      ...money
+      __typename
+    }
+    __typename
+  }
+  __typename
+}

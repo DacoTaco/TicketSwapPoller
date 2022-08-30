@@ -3,11 +3,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using StrawberryShake;
 using TicketSwapPoller;
+using TicketSwap.Api;
 
 var workerId = 0;
 var host = Host.CreateDefaultBuilder(args)
-    .ConfigureAppConfiguration( (context, builder) =>
+    .ConfigureAppConfiguration((context, builder) =>
     {
         builder.AddUserSecrets<Program>();
     })
@@ -21,15 +23,28 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices((context, services) =>
     {
+        //Setup TicketSwap client
+        services.AddTransient<AuthenticationHandler>();
+        services
+        .AddTicketSwapClient(ExecutionStrategy.NetworkOnly)
+        .ConfigureHttpClient((client) =>
+        {
+            client.BaseAddress = new Uri("https://api.ticketswap.com/graphql/public");
+        }, (clientBuilder) =>
+        {
+            clientBuilder.AddHttpMessageHandler<AuthenticationHandler>();
+        });
+
+        //Setup Worker
         var eventId = context.Configuration.GetValue<int>("EventId");
-        var accessCodes = context.Configuration.GetSection("AccessCodes").Get<IEnumerable<string>>();
+        var accessTokens = context.Configuration.GetSection("AccessTokens").Get<IEnumerable<string>>();
         services.AddTransient<Worker>((provider) =>
         {
-            var accessCode = (accessCodes ?? Enumerable.Empty<string>()).Any()
-                ? accessCodes?.ElementAtOrDefault(workerId)
+            var accessToken = (accessTokens ?? Enumerable.Empty<string>()).Any()
+                ? accessTokens?.ElementAtOrDefault(workerId)
                 : "";
-                
-            return new Worker(provider.GetRequiredService<ILogger<Worker>>(), workerId++, eventId, accessCode);
+
+            return new Worker(provider.GetRequiredService<ILogger<Worker>>(), workerId++, provider.GetRequiredService<ITicketSwapClient>(), eventId, accessToken);
         });
     })
     .UseSerilog()
