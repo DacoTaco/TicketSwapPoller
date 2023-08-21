@@ -1,11 +1,14 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Bogus;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using StrawberryShake;
-using TicketSwapPoller;
+using System.Net.Http.Headers;
+using System.Text;
 using TicketSwap.Api;
+using TicketSwapPoller;
 
 var workerId = 0;
 var host = Host.CreateDefaultBuilder(args)
@@ -29,7 +32,14 @@ var host = Host.CreateDefaultBuilder(args)
         .AddTicketSwapClient(ExecutionStrategy.NetworkOnly)
         .ConfigureHttpClient((client) =>
         {
-            client.BaseAddress = new Uri("https://api.ticketswap.com/graphql/public");
+            client.BaseAddress = new Uri("https://www.ticketswap.com/api/graphql/public");
+
+            //add required headers for ticketswap to be happy, with random data ofcourse
+            client.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("en"));
+            client.DefaultRequestHeaders.Add("device-id", Guid.NewGuid().ToString());
+            var rbzid = Convert.ToBase64String(Encoding.UTF8.GetBytes(string.Join(" ", new Faker().Lorem.Words(3))));
+            var sessionId = Guid.NewGuid().ToString().Replace("-", "");
+            client.DefaultRequestHeaders.Add("Cookie", $"optimizely_id={Guid.NewGuid()}; favorites_banner_seen=true; rbzid={rbzid}; rbzsessionid={sessionId}; intercom-id-{Guid.NewGuid}; intercom-session-f9d90yaf=; intercom-device-id-f9d90yaf={Guid.NewGuid}");
         }, (clientBuilder) =>
         {
             clientBuilder.AddHttpMessageHandler<AuthenticationHandler>();
@@ -50,7 +60,4 @@ var host = Host.CreateDefaultBuilder(args)
     .UseSerilog()
     .Build();
 
-await Task.WhenAll(
-    host.Services.GetRequiredService<Worker>().StartAsync()
-    //host.Services.GetRequiredService<Worker>().StartAsync()
-);
+await host.Services.GetRequiredService<Worker>().StartAsync();
