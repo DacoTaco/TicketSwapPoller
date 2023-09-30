@@ -28,7 +28,7 @@ public class Worker
 
     private void LogInformation(string msg, params object?[] args)
     {
-        IEnumerable<object?> msgArgs = new object?[]{ _workerId };
+        IEnumerable<object?> msgArgs = new object?[] { _workerId };
         foreach (var arg in args)
             msgArgs = msgArgs.Append(arg);
 
@@ -45,8 +45,8 @@ public class Worker
         LogInformation("Running worker...");
         while (true)
         {
-			try
-			{
+            try
+            {
                 var eventId = Convert.ToBase64String(Encoding.UTF8.GetBytes($"EventType:{_eventId}"));
                 var tickets = new List<IListingList>();
                 try
@@ -66,25 +66,25 @@ public class Worker
                     tickets.AddRange(listings);
 
                     //get reserved tickets
-                    response = await _client.GetTicketListings.ExecuteAsync(eventId, ListingStatus.Reserved, 10, null, cancellationToken);
+                    /*var response = await _client.GetTicketListings.ExecuteAsync(eventId, ListingStatus.Reserved, 10, null, cancellationToken);
                     response.EnsureNoErrors();
 
-                    listings = (response.Data?.Node?.Listings?.Edges ?? new List<IGetTicketListings_Node_Listings_Edges>())
+                    var listings = (response.Data?.Node?.Listings?.Edges ?? new List<IGetTicketListings_Node_Listings_Edges>())
                         .Where(edge => edge?.Node != null)
                         .Select(edge => edge?.Node)
                         .Cast<IListingList>();
 
-                    tickets.AddRange(listings);
+                    tickets.AddRange(listings);*/
                 }
                 finally
                 {
                     AuthenticationHandler.ReleaseLock();
                 }
 
-                foreach(var ticket in tickets)
+                foreach (var ticket in tickets)
                 {
-                    if (ticket == null)
-                        continue; 
+                    if (ticket?.Id == null)
+                        continue;
 
                     if (ticket.Status == ListingStatus.Reserved)
                     {
@@ -92,7 +92,9 @@ public class Worker
                         continue;
                     }
 
-                    LogInformation("TICKET FOUND!!!!!!!!!!!!!!!!!!!!! -> '{ticketPath}'", string.Empty);// ticket.Uri?.Path);
+                    var ticketId = Encoding.ASCII.GetString(Convert.FromBase64String(ticket.Id)).Replace("Listing:", "");
+                    var ticketUrl = $"https://www.ticketswap.com/listing/{ticket.Event?.Slug}/{ticketId}/{ticket.Hash}"; //ticket.Uri?.Path
+                    LogInformation("TICKET FOUND!!!!!!!!!!!!!!!!!!!!! -> '{ticketId}/{ticketHash} : {ticketPath}'", ticketId, ticket.Hash, ticketUrl);
                     if (string.IsNullOrWhiteSpace(ticket.Id) || string.IsNullOrWhiteSpace(ticket.Hash) || openedLinks.ContainsKey(ticket.Id))
                     {
                         LogInformation("empty id or already opened recently.");
@@ -102,9 +104,11 @@ public class Worker
                     if (string.IsNullOrWhiteSpace(_accessToken))
                     {
                         //open ticket url
-                        /*if (!string.IsNullOrWhiteSpace(ticket.Uri?.Path))
-                            Process.Start(new ProcessStartInfo($"https://www.ticketswap.be{ticket.Uri.Path}") { UseShellExecute = true });*/
+                        if (!string.IsNullOrWhiteSpace(ticketUrl))
+                            Process.Start(new ProcessStartInfo(ticketUrl) { UseShellExecute = true });
 
+                        //add ticket to used tickets
+                        openedLinks.Add(ticket.Id, DateTimeOffset.Now);
                         continue;
                     }
 
@@ -136,7 +140,7 @@ public class Worker
                         {
                             //open ticket url
                             if (!string.IsNullOrWhiteSpace(ticket.Uri?.Path))
-                                Process.Start(new ProcessStartInfo($"https://www.ticketswap.be{ticket.Uri.Path}") { UseShellExecute = true });
+                                Process.Start(new ProcessStartInfo(ticketUrl) { UseShellExecute = true });
                         }
                         catch { }*/
                         throw;
@@ -164,7 +168,7 @@ public class Worker
                 totalWaitTime += waitTime;
             }
 
-            foreach(var link in openedLinks)
+            foreach (var link in openedLinks)
             {
                 if (link.Value.AddMinutes(30) < DateTimeOffset.Now)
                     openedLinks.Remove(link.Key);
